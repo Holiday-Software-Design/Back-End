@@ -1,4 +1,4 @@
-package squarecontroller
+package square
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"hr/configs/models"
 	"log"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
@@ -14,13 +15,14 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+// 创建文章
 type CreateTopicInformation struct {
 	UserId  string `json:"user_id" binding:"userId"`
 	Title   string `json:"title" binding:"required"`
 	Content string `json:"content" binding:"required"`
 }
 
-func CreateTopic(c *gin.Context) {
+func NewTopic(c *gin.Context) {
 	c.Header("Content-Type", "application/json")
 
 	const DatabaseName string = ""
@@ -53,24 +55,24 @@ func CreateTopic(c *gin.Context) {
 	return
 }
 
-type GetTopicListInformation struct {
-	Index          int64 `json:"index" binding:"required"`
-	PaginationSize int64 `json:"paginationSize"`
-}
-
+// 文章列表
 func GetTopicList(c *gin.Context) {
 	c.Header("Content-Type", "application/json")
 
 	const DatabaseName string = ""
 	const CollectionName string = ""
-
-	var gettopiclistinformation GetTopicListInformation
-	err := c.ShouldBindJSON(&gettopiclistinformation)
+	lastViewParam := c.Query("lastview")
+	lastView, err := strconv.Atoi(lastViewParam)
 	if err != nil {
-		utils.ResponseError(c, "Paramter", "ParameterErrorMsg")
+		// TODO
 		return
 	}
-
+	limitParam := c.Query("limit")
+	limit, err := strconv.Atoi(limitParam)
+	if err != nil {
+		// TODO
+		return
+	}
 	// 获取collection
 	mongoClient, exists := c.Request.Context().Value("mongoClient").(*mongo.Client)
 	if !exists {
@@ -80,7 +82,7 @@ func GetTopicList(c *gin.Context) {
 	database := mongoClient.Database(DatabaseName)
 	collection := database.Collection(CollectionName)
 	filter := bson.D{}
-	options := options.Find().SetSort(bson.D{{Key: "created_at", Value: -1}}).SetSkip((gettopiclistinformation.Index - 1) * gettopiclistinformation.PaginationSize).SetLimit(gettopiclistinformation.PaginationSize)
+	options := options.Find().SetSort(bson.D{{Key: "created_at", Value: -1}}).SetSkip(int64(lastView)).SetLimit(int64(limit))
 	result, err := collection.Find(context.TODO(), filter, options)
 	if err != nil {
 		// 处理逻辑
@@ -95,11 +97,10 @@ func GetTopicList(c *gin.Context) {
 	return
 }
 
+// 文章内容
 func GetTopic(c *gin.Context) {
 	c.Header("Content-Type", "application/json")
 
-	const DatabaseName string = ""
-	const CollectionName string = ""
 	topicId := c.Param("topicId")
 
 	// 获取collection
@@ -108,6 +109,8 @@ func GetTopic(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "MongoDB client not found in context"})
 		return
 	}
+	const DatabaseName string = ""
+	const CollectionName string = ""
 	database := mongoClient.Database(DatabaseName)
 	collection := database.Collection(CollectionName)
 
@@ -125,6 +128,55 @@ func GetTopic(c *gin.Context) {
 		log.Fatal(err)
 		return
 	}
+
 	utils.ResponseSuccess(c, topic)
 	return
+}
+
+type ModifiedTopicInformation struct {
+	Context string `json:"context"`
+}
+
+func ModifiedTopic(c *gin.Context) {
+	c.Header("Content-Type", "application/json")
+	var information ModifiedTopicInformation
+	err := c.ShouldBindJSON(&information)
+	if err != nil {
+		// TODO
+		return
+	}
+	topicId := c.Param("topicId")
+	// 从上下文中获取currentUser
+	user, ok := c.Get("currentUser")
+	currentUser, ok := user.(models.CurrentUser)
+	if !ok {
+		c.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
+
+	mongoClient, exists := c.Request.Context().Value("mongoClient").(*mongo.Client)
+	if !exists {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "MongoDB client not found in context"})
+		return
+	}
+	const DatabaseName string = ""
+	const CollectionName string = ""
+	database := mongoClient.Database(DatabaseName)
+	collection := database.Collection(CollectionName)
+	// 如果通过文章的id和修改人的id进行查找，如果找不到，说明修改人不是原作者，不允许修改
+	filter := bson.M{
+		"topicId": topicId,
+		"userId":  currentUser.UserId,
+	}
+	modified := bson.M{
+		"$set": bson.M{
+			"content": information.Context,
+		},
+	}
+	_, err = collection.UpdateOne(context.TODO(), filter, modified)
+	if err != nil {
+		//TODO
+		return
+	}
+	utils.ResponseSuccess(c, nil)
 }
