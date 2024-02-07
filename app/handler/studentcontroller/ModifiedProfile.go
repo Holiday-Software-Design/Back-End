@@ -37,16 +37,15 @@ func ModifiedProfileHandler(c *gin.Context) {
 	}
 	// 修改之后的文档
 	_ = service.UpdateOne(c, "", "", filter, modified)
-	if err != nil {
-		c.Error(utils.GetError(utils.VALID_ERROR, err.Error()))
-		return
-	}
 	currentUser := service.GetCurrentUser(c)
+
 	newToken, err := midware.GenerateToken(currentUser)
 	if err != nil {
 		c.Error(utils.GetError(utils.VALID_ERROR, err.Error()))
 		return
 	}
+	// 发信
+	service.PublishMessage(c, utils.UserExchange, currentUser.UserId, utils.ModifiedProfile)
 	// 生成新token
 	utils.ResponseSuccess(c, newToken)
 }
