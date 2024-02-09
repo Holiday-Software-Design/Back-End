@@ -5,12 +5,13 @@ import (
 	"hr/app/service"
 	"hr/app/utils"
 	"hr/configs/models"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-const savePath = ""
+const savePath = utils.Evidence
 
 func SubmitHandler(c *gin.Context) {
 	// 上传申报
@@ -18,6 +19,7 @@ func SubmitHandler(c *gin.Context) {
 	userId := c.Param("userId")
 	itemName := c.PostForm("itemName")
 	academicYear := c.PostForm("academicYear")
+	msg := c.PostForm("msg")
 	data, err := c.MultipartForm()
 	if err != nil {
 		c.Error(utils.GetError(utils.PARAM_ERROR, err.Error()))
@@ -49,10 +51,12 @@ func SubmitHandler(c *gin.Context) {
 		CurrentUser:  currentUser,
 		ItemName:     itemName,
 		AcademicYear: academicYear,
+		Msg:          msg,
 		Evidence:     destPaths,
 		Status:       false,
+		CreateAt:     time.Now(),
 	}
-	insertResult := service.InsertOne(c, "", "", newSubmission)
+	insertResult := service.InsertOne(c, utils.MongodbName, utils.Submission, newSubmission)
 	utils.ResponseSuccess(c, insertResult.InsertedID)
 }
 
@@ -65,7 +69,7 @@ func GetSubmissionStatus(c *gin.Context) {
 		"userId": userId,
 	}
 
-	result := service.Find(c, "", "", filter)
+	result := service.Find(c, utils.MongodbName, utils.Submission, filter)
 	var forms []models.SubmitInformation
 	if err := result.All(context.Background(), &forms); err != nil {
 		c.Error(utils.GetError(utils.DECODE_ERROR, err.Error()))
