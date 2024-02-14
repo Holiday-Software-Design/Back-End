@@ -1,0 +1,13 @@
+MongoDB:
+  url: "localhost:27017"
+  user: "admin"
+  password: "admin"
+
+redis:
+  url: "localhost:6379"
+  password: "admin"
+
+rabbitMQ:
+  url: "localhost:5672"
+  user: "guest"
+  password: "guest"
