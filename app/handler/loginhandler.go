@@ -11,8 +11,8 @@ import (
 )
 
 type information struct {
-	UserId   string `json:"userId"`
-	Password string `json:"passWord"`
+	UserID   string `json:"UserID"`
+	Password string `json:"PassWord"`
 }
 type reponse struct {
 	CurrentUser models.CurrentUser
@@ -31,8 +31,8 @@ func LoginHandler_Student(c *gin.Context) {
 	var user models.Student
 
 	filter := bson.M{
-		"_id":      information.UserId,
-		"passWord": information.Password,
+		"_id":      information.UserID,
+		"PassWord": information.Password,
 	}
 
 	err = service.FindOne(c, utils.MongodbName, utils.Student, filter).Decode(&user)
@@ -43,7 +43,7 @@ func LoginHandler_Student(c *gin.Context) {
 	}
 
 	currentUser := models.CurrentUser{
-		UserId:     information.UserId,
+		UserID:     information.UserID,
 		UserName:   user.UserName,
 		Grade:      user.Grade,
 		Role:       "Student",
@@ -75,8 +75,8 @@ func LoginHandler_Counsellor(c *gin.Context) {
 	}
 	var user models.Counsellor
 	filter := bson.M{
-		"_id":      information.UserId,
-		"passWord": information.Password,
+		"_id":      information.UserID,
+		"PassWord": information.Password,
 	}
 
 	err = service.FindOne(c, utils.MongodbName, utils.Counsellor, filter).Decode(&user)
@@ -87,7 +87,7 @@ func LoginHandler_Counsellor(c *gin.Context) {
 	}
 
 	currentUser := models.CurrentUser{
-		UserId:     information.UserId,
+		UserID:     information.UserID,
 		UserName:   user.UserName,
 		Grade:      user.Grade,
 		Role:       "Counsellor",
